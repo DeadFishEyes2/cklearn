@@ -166,6 +166,43 @@ void addRows(dataFrame* df, int num_new_rows, float **data){
     }
 }
 
+void addColumns(dataFrame* df, int num_new_columns, float** data, char **columns){
+    int prev_columns = df->num_columns;
+    int i, j;
+    
+    //Resize the data container
+    df->num_columns += num_new_columns;
+    char **temp_columns = (char**)realloc(df->columns, df->num_columns * sizeof(char*));
+    if (!temp_columns) {
+        fprintf(stderr, "Failed to allocate memory\n");
+        exit(EXIT_FAILURE);
+    }
+    df->columns = temp_columns;
+
+    //Copying the name of the new columns into the dataFrame
+    for (i = 0; i < num_new_columns; i++) {
+        df->columns[prev_columns + i] = strdup(columns[i]);
+        if (!df->columns[prev_columns + i]) {
+            fprintf(stderr, "Failed to allocate memory for column name\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    //Copying the data from the new columns into the dataFrame
+    for (i = 0; i < df->num_rows; i++) {
+        float *temp_row = (float*)realloc(df->data[i], df->num_columns * sizeof(float));
+        if (!temp_row) {
+            fprintf(stderr, "Failed to allocate memory for row %d\n", i);
+            exit(EXIT_FAILURE);
+        }
+        df->data[i] = temp_row;
+
+        for (j = 0; j < num_new_columns; j++) {
+            df->data[i][prev_columns + j] = data[i][j];
+        }
+    }
+}
+
 int main() {
     dataFrame *df1 = readCSV("data1.csv");
     if (df1) {
@@ -177,7 +214,7 @@ int main() {
         printDataFrame(df2);
     }
     printf("\n\n");
-    addRows(df1, df2->num_rows, df2->data);
+    addColumns(df1, df2->num_columns, df2->data, df2->columns);
     if (df1) {
         printDataFrame(df1);
     }
