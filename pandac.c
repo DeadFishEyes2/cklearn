@@ -1,0 +1,185 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct dataFrame{
+    int num_columns;
+    int num_rows;
+    float **data;
+    char **columns;
+} dataFrame;
+
+dataFrame* createDataFrame (int num_columns, int num_rows, float** data, char **columns){
+    dataFrame* df = (dataFrame*)malloc(sizeof(dataFrame));
+    if (df == NULL) {
+        fprintf(stderr, "Memory allocation failed for dataFrame\n");
+        return NULL;
+    }
+
+    df->num_columns = num_columns;
+    df->num_rows = num_rows;
+
+    // Allocate and copy column names
+    df->columns = (char**)malloc(num_columns * sizeof(char*));
+    if (df->columns == NULL) {
+        fprintf(stderr, "Memory allocation failed for columns\n");
+        free(df);
+        return NULL;
+    }
+    for (int i = 0; i < num_columns; ++i) {
+        df->columns[i] = strdup(columns[i]); // copies the string
+    }
+
+    // Allocate and copy data
+    df->data = (float**)malloc(num_rows * sizeof(float*));
+    if (df->data == NULL) {
+        fprintf(stderr, "Memory allocation failed for data\n");
+        for (int i = 0; i < num_columns; ++i) 
+            free(df->columns[i]);
+        free(df->columns);
+        free(df);
+        return NULL;
+    }
+
+    for (int i = 0; i < num_rows; ++i) {
+        df->data[i] = (float*)malloc(num_columns * sizeof(float));
+        for (int j = 0; j < num_columns; ++j) {
+            df->data[i][j] = data[i][j]; // copy each element
+        }
+    }
+
+    return df;
+}
+
+void freeDataFrame(dataFrame* df) {
+    for (int i = 0; i < df->num_rows; ++i) {
+        free(df->data[i]);
+    }
+    free(df->data);
+
+    for (int i = 0; i < df->num_columns; ++i) {
+        free(df->columns[i]);
+    }
+    free(df->columns);
+
+    free(df);
+}
+
+dataFrame* readCSV(const char *filename) {
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        fprintf(stderr, "Could not open file %s\n", filename);
+        return NULL;
+    }
+
+    char line[1024];
+    int num_columns = 0;
+    int num_rows = 0;
+
+    // Read header
+    if (!fgets(line, sizeof(line), fp)) {
+        fprintf(stderr, "Failed to read header\n");
+        fclose(fp);
+        return NULL;
+    }
+
+    // Count columns
+    char *token = strtok(line, ",\n");
+    char **columns = NULL;
+    while (token) {
+        columns = (char**)realloc(columns, (num_columns + 1) * sizeof(char*));
+        columns[num_columns] = strdup(token);
+        num_columns++;
+        token = strtok(NULL, ",\n");
+    }
+
+    // Read rows
+    float **data = NULL;
+    while (fgets(line, sizeof(line), fp)) {
+        data = (float**)realloc(data, (num_rows + 1) * sizeof(float*));
+        data[num_rows] = (float*)malloc(num_columns * sizeof(float));
+
+        token = strtok(line, ",\n");
+        for (int i = 0; i < num_columns; i++) {
+            if (token) {
+                data[num_rows][i] = strtof(token, NULL); // convert string to float
+                token = strtok(NULL, ",\n");
+            } else {
+                data[num_rows][i] = 0.0; // fill missing values with 0
+            }
+        }
+        num_rows++;
+    }
+
+    fclose(fp);
+
+    dataFrame *df = createDataFrame(num_columns, num_rows, data, columns);
+
+    // Free temporary arrays (data + columns were copied into df)
+    for (int i = 0; i < num_rows; i++) free(data[i]);
+    free(data);
+    for (int i = 0; i < num_columns; i++) free(columns[i]);
+    free(columns);
+
+    return df;
+}
+
+void printDataFrame(dataFrame *df) {
+    int col_width = 12; // Set width for each column
+
+    // Print column headers
+    for (int i = 0; i < df->num_columns; i++) {
+        printf("%-*s", col_width, df->columns[i]); // Left-align
+    }
+    printf("\n");
+
+    // Print rows
+    for (int i = 0; i < df->num_rows; i++) {
+        for (int j = 0; j < df->num_columns; j++) {
+            printf("%-*.2f", col_width, df->data[i][j]); // Left-align numbers (to right-align "%*-.2f")
+        }
+        printf("\n");
+    }
+}
+
+void addRows(dataFrame* df, int num_new_rows, float **data){
+    int prev_rows = df->num_rows;
+    int i, j;
+    
+    //Resize the data container
+    df->num_rows += num_new_rows;
+    float **temp = (float**)realloc(df->data, df->num_rows * sizeof(float*)); //using a temp pointer so data isn't lost in case of a failed allocation
+    if (!temp) {
+        fprintf(stderr, "Failed to allocate memory\n");
+        exit(EXIT_FAILURE);
+    }
+    df->data = temp;
+    for (i = 0; i < num_new_rows; i++)
+        df->data[i + prev_rows] = (float*)malloc(df->num_columns * sizeof(float));
+    
+    //Copy the new rows
+    for (i = 0; i < num_new_rows; i++){
+        
+        for (j = 0; j < df->num_columns; j++){
+            df->data[i+prev_rows][j] = data[i][j];
+        }    
+    }
+}
+
+int main() {
+    dataFrame *df1 = readCSV("data1.csv");
+    if (df1) {
+        printDataFrame(df1);
+    }
+    printf("\n\n");
+    dataFrame *df2 = readCSV("data2.csv");
+    if (df2) {
+        printDataFrame(df2);
+    }
+    printf("\n\n");
+    addRows(df1, df2->num_rows, df2->data);
+    if (df1) {
+        printDataFrame(df1);
+    }
+    return 0;
+}
