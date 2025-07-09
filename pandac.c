@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 typedef struct dataFrame{
     int num_columns;
@@ -203,7 +204,7 @@ void addColumns(dataFrame* df, int num_new_columns, float** data, char **columns
     }
 }
 
-int getColumnIndex(dataFrame *df, char *column_name){
+int getColumnIndex(dataFrame *df, const char *column_name){
     int i;
     for (i = 0; i < df->num_columns; i++){
         if (strcmp(df->columns[i], column_name) == 0)
@@ -212,14 +213,54 @@ int getColumnIndex(dataFrame *df, char *column_name){
     return -1;
 }
 
-float getColumnMean(dataFrame* df, char *column_name){
+float getColumnMean(dataFrame* df, const char *column_name){
     int column_index = getColumnIndex(df, column_name);
     int i;
-    double sum;
+    double sum = 0;
     for (i = 0; i < df->num_rows; i++){
         sum += df->data[i][column_index];
     }
     return sum/(df->num_rows);
+}
+
+float getColumnMax(dataFrame* df, const char *column_name){
+    int column_index = getColumnIndex(df, column_name);
+    int i;
+    float max = df->data[0][column_index];
+    for (i = 1; i < df->num_rows; i++){
+        if(df->data[i][column_index] > max)
+            max = df->data[i][column_index];
+    }
+    return max;
+}
+
+float getColumnMin(dataFrame* df, const char *column_name){
+    int column_index = getColumnIndex(df, column_name);
+    int i;
+    float min = df->data[0][column_index];
+    for (i = 1; i < df->num_rows; i++){
+        if(df->data[i][column_index] < min)
+            min = df->data[i][column_index];
+    }
+    return min;
+}
+
+float getColumnStd(dataFrame *df, const char *column_name) {
+    int col_idx = getColumnIndex(df, column_name);
+    if (col_idx == -1) {
+        fprintf(stderr, "Column not found: %s\n", column_name);
+        exit(EXIT_FAILURE);
+    }
+
+    float mean = getColumnMean(df, column_name);
+    float sum_sq_diff = 0.0;
+
+    for (int i = 0; i < df->num_rows; i++) {
+        float diff = df->data[i][col_idx] - mean;
+        sum_sq_diff += diff * diff;
+    }
+
+    return sqrt(sum_sq_diff / df->num_rows);
 }
 
 int main() {
@@ -238,6 +279,6 @@ int main() {
         printDataFrame(df1);
     }
     printf("\n\n");
-    printf("%f", getColumnMean(df1, "income"));
+    printf("%f\n%f\n%f\n%f", getColumnMean(df1, "income"), getColumnMin(df1, "income"), getColumnMax(df1, "income"), getColumnStd(df1, "id"));
     return 0;
 }
