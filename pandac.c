@@ -203,6 +203,25 @@ void addColumns(dataFrame* df, int num_new_columns, float** data, char **columns
     }
 }
 
+int getColumnIndex(dataFrame *df, char *column_name){
+    int i;
+    for (i = 0; i < df->num_columns; i++){
+        if (strcmp(df->columns[i], column_name) == 0)
+            return i;
+    }
+    return -1;
+}
+
+float getColumnMean(dataFrame* df, char *column_name){
+    int column_index = getColumnIndex(df, column_name);
+    int i;
+    double sum;
+    for (i = 0; i < df->num_rows; i++){
+        sum += df->data[i][column_index];
+    }
+    return sum/(df->num_rows);
+}
+
 int main() {
     dataFrame *df1 = readCSV("data1.csv");
     if (df1) {
@@ -218,5 +237,7 @@ int main() {
     if (df1) {
         printDataFrame(df1);
     }
+    printf("\n\n");
+    printf("%f", getColumnMean(df1, "income"));
     return 0;
 }
