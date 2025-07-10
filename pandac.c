@@ -66,6 +66,48 @@ void freeDataFrame(dataFrame* df) {
     free(df);
 }
 
+void trim(char *str) {
+    // Utility: trim trailing newline or whitespace
+    size_t len = strlen(str);
+    while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r' || str[len - 1] == ' ')) {
+        str[--len] = '\0';
+    }
+}
+
+int splitCSVLine(char *line, char ***out_tokens) {
+    // Utility: split a CSV line safely
+    int count = 0;
+    int capacity = 10;
+    char **tokens = malloc(capacity * sizeof(char *));
+    if (!tokens) return -1;
+
+    char *start = line;
+    char *end;
+    while (1) {
+        end = strchr(start, ',');
+        if (!end) { // last token
+            trim(start);
+            tokens[count++] = strdup(start);
+            break;
+        }
+
+        *end = '\0'; // null-terminate token
+        trim(start);
+        tokens[count++] = strdup(start);
+        start = end + 1;
+
+        // grow array if needed
+        if (count >= capacity) {
+            capacity *= 2;
+            tokens = realloc(tokens, capacity * sizeof(char *));
+            if (!tokens) return -1;
+        }
+    }
+
+    *out_tokens = tokens;
+    return count; // return number of tokens
+}
+
 dataFrame* readCSV(const char *filename) {
     FILE *fp = fopen(filename, "r");
     if (!fp) {
@@ -76,6 +118,8 @@ dataFrame* readCSV(const char *filename) {
     char line[1024];
     int num_columns = 0;
     int num_rows = 0;
+    char **columns = NULL;
+    float **data = NULL;
 
     // Read header
     if (!fgets(line, sizeof(line), fp)) {
@@ -83,44 +127,44 @@ dataFrame* readCSV(const char *filename) {
         fclose(fp);
         return NULL;
     }
-
-    // Count columns
-    char *token = strtok(line, ",\n");
-    char **columns = NULL;
-    while (token) {
-        columns = (char**)realloc(columns, (num_columns + 1) * sizeof(char*));
-        columns[num_columns] = strdup(token);
-        num_columns++;
-        token = strtok(NULL, ",\n");
-    }
+    trim(line);
+    num_columns = splitCSVLine(line, &columns);
 
     // Read rows
-    float **data = NULL;
     while (fgets(line, sizeof(line), fp)) {
-        data = (float**)realloc(data, (num_rows + 1) * sizeof(float*));
-        data[num_rows] = (float*)malloc(num_columns * sizeof(float));
+        trim(line);
 
-        token = strtok(line, ",\n");
+        // Grow rows
+        data = realloc(data, (num_rows + 1) * sizeof(float *));
+        data[num_rows] = malloc(num_columns * sizeof(float));
+
+        char **row_tokens = NULL;
+        int token_count = splitCSVLine(line, &row_tokens);
+
+        // Fill row
         for (int i = 0; i < num_columns; i++) {
-            if (token) {
-                data[num_rows][i] = strtof(token, NULL); // convert string to float
-                token = strtok(NULL, ",\n");
+            if (i < token_count) {
+                if (strlen(row_tokens[i]) == 0 || strcasecmp(row_tokens[i], "NaN") == 0) {
+                    data[num_rows][i] = NAN; // missing value
+                } else {
+                    data[num_rows][i] = strtof(row_tokens[i], NULL);
+                }
             } else {
-                data[num_rows][i] = 0.0; // fill missing values with 0
+                data[num_rows][i] = NAN; // missing trailing column
             }
+            free(row_tokens[i]);
         }
+        free(row_tokens);
         num_rows++;
     }
-
     fclose(fp);
 
-    dataFrame *df = createDataFrame(num_columns, num_rows, data, columns);
-
-    // Free temporary arrays (data + columns were copied into df)
-    for (int i = 0; i < num_rows; i++) free(data[i]);
-    free(data);
-    for (int i = 0; i < num_columns; i++) free(columns[i]);
-    free(columns);
+    // Build dataFrame
+    dataFrame *df = malloc(sizeof(dataFrame));
+    df->num_rows = num_rows;
+    df->num_columns = num_columns;
+    df->data = data;
+    df->columns = columns;
 
     return df;
 }
@@ -215,12 +259,16 @@ int getColumnIndex(dataFrame *df, const char *column_name){
 
 float getColumnMean(dataFrame* df, const char *column_name){
     int column_index = getColumnIndex(df, column_name);
-    int i;
+    int i, num_nans = 0;
     double sum = 0;
     for (i = 0; i < df->num_rows; i++){
-        sum += df->data[i][column_index];
+        if (isnan(df->data[i][column_index])){
+            num_nans++;
+        } else {
+            sum += df->data[i][column_index];
+        }
     }
-    return sum/(df->num_rows);
+    return sum/(df->num_rows - num_nans);
 }
 
 float getColumnMax(dataFrame* df, const char *column_name){
@@ -252,15 +300,21 @@ float getColumnStd(dataFrame *df, const char *column_name) {
         exit(EXIT_FAILURE);
     }
 
+    int num_nans = 0;
     float mean = getColumnMean(df, column_name);
     float sum_sq_diff = 0.0;
 
     for (int i = 0; i < df->num_rows; i++) {
-        float diff = df->data[i][col_idx] - mean;
-        sum_sq_diff += diff * diff;
+        if (isnan(df->data[i][col_idx])){
+            num_nans++;
+            printf("NUM NANS = %d\n", num_nans);
+        } else {
+            float diff = df->data[i][col_idx] - mean;
+            sum_sq_diff += diff * diff;
+        }
     }
 
-    return sqrt(sum_sq_diff / df->num_rows);
+    return sqrt(sum_sq_diff / (df->num_rows - num_nans));
 }
 
 void normalizeColumnMinMax(dataFrame *df, char *column_name) {
@@ -463,8 +517,8 @@ int main() {
     printDataFrame(df2);
     printf("\n\n");
 
-    dataFrame *df3 = selectBottomRows(df1, 2);
-    printDataFrame(df3);
+    float mean = getColumnMean(df1, "work hours");
+    printf("%f", mean);
     printf("\n\n");
     
     return 0;
