@@ -352,6 +352,107 @@ dataFrame* selectColumns(dataFrame *df, int num_selected_columns,  char **select
     return selected_df;
 }
 
+dataFrame* selectTopRows(dataFrame *df, int num_top_rows){
+    
+    int i, j;
+
+    //allocate data container
+    dataFrame* selected_df = (dataFrame*)malloc(sizeof(dataFrame));
+    if (selected_df == NULL){
+        fprintf(stderr, "Failed to allocate memory for selected dataFrame\n");
+        return NULL;
+    }
+    selected_df->num_rows = num_top_rows;
+    selected_df->num_columns = df->num_columns;
+    selected_df->data = (float**)malloc((selected_df->num_rows) * sizeof(float*));
+    if (selected_df->data == NULL){
+        free(selected_df);
+        fprintf(stderr, "Failed to allocate memory\n");
+        return NULL;
+    }
+    selected_df->columns = (char**)malloc((selected_df->num_columns) * sizeof(char*));
+    if (selected_df->columns == NULL){
+        free(selected_df->data);
+        free(selected_df);
+        fprintf(stderr, "Failed to allocate memory\n");
+    }
+    for (i = 0; i < selected_df->num_rows; i++){
+        selected_df->data[i] = (float*)malloc((selected_df->num_columns) * sizeof(float));
+        if (selected_df->data[i] == NULL){ //in case of a failed allocation, the selected_df is freed from memory
+            for (j = 0; j < i; j++){
+                free(selected_df->data[j]);
+            }
+            free(selected_df->columns);
+            free(selected_df);
+            fprintf(stderr, "Failed to allocate memory\n");
+            return NULL;
+        }
+    }
+
+    //copy the column names
+    for (j = 0; j < selected_df->num_columns; j++)
+        selected_df->columns[j] = strdup(df->columns[j]);
+
+    //copy the first rows from the original dataFrame to the selected dataFrame
+    for (i = 0; i < selected_df->num_rows; i++){
+        for (j = 0; j < selected_df->num_columns; j++){
+            selected_df->data[i][j] = df->data[i][j];
+        }
+    }
+
+    return selected_df;
+}
+
+dataFrame* selectBottomRows(dataFrame *df, int num_bottom_rows){
+    int i, j;
+
+    //allocate data container
+    dataFrame* selected_df = (dataFrame*)malloc(sizeof(dataFrame));
+    if (selected_df == NULL){
+        fprintf(stderr, "Failed to allocate memory for selected dataFrame\n");
+        return NULL;
+    }
+    selected_df->num_rows = num_bottom_rows;
+    selected_df->num_columns = df->num_columns;
+    selected_df->data = (float**)malloc((selected_df->num_rows) * sizeof(float*));
+    if (selected_df->data == NULL){
+        free(selected_df);
+        fprintf(stderr, "Failed to allocate memory\n");
+        return NULL;
+    }
+    selected_df->columns = (char**)malloc((selected_df->num_columns) * sizeof(char*));
+    if (selected_df->columns == NULL){
+        free(selected_df->data);
+        free(selected_df);
+        fprintf(stderr, "Failed to allocate memory\n");
+    }
+    for (i = 0; i < selected_df->num_rows; i++){
+        selected_df->data[i] = (float*)malloc((selected_df->num_columns) * sizeof(float));
+        if (selected_df->data[i] == NULL){ //in case of a failed allocation, the selected_df is freed from memory
+            for (j = 0; j < i; j++){
+                free(selected_df->data[j]);
+            }
+            free(selected_df->columns);
+            free(selected_df);
+            fprintf(stderr, "Failed to allocate memory\n");
+            return NULL;
+        }
+    }
+
+    //copy the column names
+    for (j = 0; j < selected_df->num_columns; j++)
+        selected_df->columns[j] = strdup(df->columns[j]);
+
+    //copy the first rows from the original dataFrame to the selected dataFrame
+    int num_skipped_rows = (df->num_rows) - (selected_df->num_rows);
+    for (i = 0; i < selected_df->num_rows; i++){
+        for (j = 0; j < selected_df->num_columns; j++){
+            selected_df->data[i][j] = df->data[i+num_skipped_rows][j];
+        }
+    }
+    return selected_df;
+}
+
 int main() {
 
     dataFrame *df1 = readCSV("data1.csv");
@@ -362,7 +463,7 @@ int main() {
     printDataFrame(df2);
     printf("\n\n");
 
-    dataFrame *df3 = selectColumns(df1, 2, (char*[]){"id", "income"});
+    dataFrame *df3 = selectBottomRows(df1, 2);
     printDataFrame(df3);
     printf("\n\n");
     
