@@ -263,22 +263,58 @@ float getColumnStd(dataFrame *df, const char *column_name) {
     return sqrt(sum_sq_diff / df->num_rows);
 }
 
+void normalizeColumnMinMax(dataFrame *df, char *column_name) {
+    int col_idx = getColumnIndex(df, column_name);
+    if (col_idx == -1) {
+        fprintf(stderr, "Column not found\n");
+        return;
+    }
+    
+    // Find min and max
+    float min = getColumnMin(df, column_name);
+    float max = getColumnMax(df, column_name);
+    
+    // Normalize
+    for (int i = 0; i < df->num_rows; i++) {
+        df->data[i][col_idx] = (df->data[i][col_idx] - min) / (max - min);
+    }
+}
+
+void normalizeColumnZScore(dataFrame *df, char *column_name) {
+    int col_idx = getColumnIndex(df, column_name);
+    if (col_idx == -1) {
+        fprintf(stderr, "Column not found\n");
+        return;
+    }
+    
+    float mean = getColumnMean(df, column_name);
+    float std = getColumnStd(df, column_name);
+    
+    if (std == 0) {
+        fprintf(stderr, "Standard deviation is zero, cannot normalize\n");
+        return;
+    }
+    
+    // Normalize
+    for (int i = 0; i < df->num_rows; i++) {
+        df->data[i][col_idx] = (df->data[i][col_idx] - mean) / std;
+    }
+}
+
+
 int main() {
+
     dataFrame *df1 = readCSV("data1.csv");
-    if (df1) {
-        printDataFrame(df1);
-    }
+    printDataFrame(df1);
     printf("\n\n");
+
     dataFrame *df2 = readCSV("data2.csv");
-    if (df2) {
-        printDataFrame(df2);
-    }
+    printDataFrame(df2);
     printf("\n\n");
-    addColumns(df1, df2->num_columns, df2->data, df2->columns);
-    if (df1) {
-        printDataFrame(df1);
-    }
+
+    normalizeColumnZScore(df1, "income");
+    printDataFrame(df1);
     printf("\n\n");
-    printf("%f\n%f\n%f\n%f", getColumnMean(df1, "income"), getColumnMin(df1, "income"), getColumnMax(df1, "income"), getColumnStd(df1, "id"));
+    
     return 0;
 }
