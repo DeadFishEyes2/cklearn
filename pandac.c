@@ -301,6 +301,56 @@ void normalizeColumnZScore(dataFrame *df, char *column_name) {
     }
 }
 
+dataFrame* selectColumns(dataFrame *df, int num_selected_columns,  char **selected_columns){
+
+    int i, j;
+
+    //allocate data container
+    dataFrame* selected_df = (dataFrame*)malloc(sizeof(dataFrame));
+    if (selected_df == NULL){
+        fprintf(stderr, "Failed to allocate memory for selected dataFrame\n");
+        return NULL;
+    }
+    selected_df->num_rows = df->num_rows;
+    selected_df->num_columns = num_selected_columns;
+    selected_df->data = (float**)malloc((selected_df->num_rows) * sizeof(float*));
+    if (selected_df->data == NULL){
+        free(selected_df);
+        fprintf(stderr, "Failed to allocate memory\n");
+        return NULL;
+    }
+    selected_df->columns = (char**)malloc(num_selected_columns * sizeof(char*));
+    if (selected_df->columns == NULL){
+        free(selected_df->data);
+        free(selected_df);
+        fprintf(stderr, "Failed to allocate memory\n");
+    }
+    for (i = 0; i < selected_df->num_rows; i++){
+        selected_df->data[i] = (float*)malloc(num_selected_columns * sizeof(float));
+        if (selected_df->data[i] == NULL){ //in case of a failed allocation, the selected_df is freed from memory
+            for (j = 0; j < i; j++){
+                free(selected_df->data[j]);
+            }
+            free(selected_df->columns);
+            free(selected_df);
+            fprintf(stderr, "Failed to allocate memory\n");
+            return NULL;
+        }
+    }
+
+    //copy selected columns into the new dataFrame
+    int* column_indexes = (int*)malloc(num_selected_columns*sizeof(int));
+    for (j = 0; j < num_selected_columns; j++){
+        column_indexes[j] = getColumnIndex(df, df->columns[j]);
+        selected_df->columns[j] = strdup(df->columns[column_indexes[j]]);
+    }
+    for (i = 0; i < selected_df->num_rows; i++){
+        for (j = 0; j < selected_df->num_columns; j++){
+            selected_df->data[i][j] = df->data[i][column_indexes[j]];
+        }
+    }
+    return selected_df;
+}
 
 int main() {
 
@@ -312,8 +362,8 @@ int main() {
     printDataFrame(df2);
     printf("\n\n");
 
-    normalizeColumnZScore(df1, "income");
-    printDataFrame(df1);
+    dataFrame *df3 = selectColumns(df1, 2, (char*[]){"id", "income"});
+    printDataFrame(df3);
     printf("\n\n");
     
     return 0;
