@@ -560,6 +560,113 @@ void equalizeRows(dataFrame *df1, dataFrame *df2, char* method){
     }
 }
 
+dataFrame* innerJoin(dataFrame *df1, dataFrame *df2) {
+    int i, j, k;
+
+    // 1. Find common columns
+    int *df1_common_idx = malloc(df1->num_columns * sizeof(int));
+    int *df2_common_idx = malloc(df2->num_columns * sizeof(int));
+    int num_common_columns = 0;
+
+    for (i = 0; i < df1->num_columns; i++) {
+        for (j = 0; j < df2->num_columns; j++) {
+            if (strcmp(df1->columns[i], df2->columns[j]) == 0) {
+                df1_common_idx[num_common_columns] = i;
+                df2_common_idx[num_common_columns] = j;
+                num_common_columns++;
+            }
+        }
+    }
+
+    if (num_common_columns == 0) {
+        fprintf(stderr, "No common columns found for join\n");
+        return NULL;
+    }
+
+    // 2. Determine result schema
+    int result_columns = df1->num_columns + (df2->num_columns - num_common_columns);
+    char **result_col_names = malloc(result_columns * sizeof(char*));
+
+    // Copy df1 columns
+    for (i = 0; i < df1->num_columns; i++) {
+        result_col_names[i] = strdup(df1->columns[i]);
+    }
+
+    // Copy df2 non-common columns
+    int offset = df1->num_columns;
+    for (j = 0; j < df2->num_columns; j++) {
+        int is_common = 0;
+        for (k = 0; k < num_common_columns; k++) {
+            if (df2_common_idx[k] == j) {
+                is_common = 1;
+                break;
+            }
+        }
+        if (!is_common) {
+            result_col_names[offset++] = strdup(df2->columns[j]);
+        }
+    }
+
+    // 3. Compare rows and build result data
+    float **result_data = NULL;
+    int result_rows = 0;
+
+    for (i = 0; i < df1->num_rows; i++) {
+        for (j = 0; j < df2->num_rows; j++) {
+            int match = 1;
+            for (k = 0; k < num_common_columns; k++) {
+                float val1 = df1->data[i][df1_common_idx[k]];
+                float val2 = df2->data[j][df2_common_idx[k]];
+                if (val1 != val2 && !(isnan(val1) && isnan(val2))) {
+                    match = 0;
+                    break;
+                }
+            }
+
+            if (match) {
+                result_data = realloc(result_data, (result_rows + 1) * sizeof(float*));
+                result_data[result_rows] = malloc(result_columns * sizeof(float));
+
+                // Copy df1 row
+                for (k = 0; k < df1->num_columns; k++) {
+                    result_data[result_rows][k] = df1->data[i][k];
+                }
+
+                // Copy df2 non-common columns
+                int col_offset = df1->num_columns;
+                for (k = 0; k < df2->num_columns; k++) {
+                    int is_common = 0;
+                    for (int m = 0; m < num_common_columns; m++) {
+                        if (df2_common_idx[m] == k) {
+                            is_common = 1;
+                            break;
+                        }
+                    }
+                    if (!is_common) {
+                        result_data[result_rows][col_offset++] = df2->data[j][k];
+                    }
+                }
+
+                result_rows++;
+            }
+        }
+    }
+
+    free(df1_common_idx);
+    free(df2_common_idx);
+
+    // 4. Build dataframe
+    dataFrame *result_df = createDataFrame(result_columns, result_rows, result_data, result_col_names);
+
+    // Free temporary allocations
+    for (i = 0; i < result_rows; i++) free(result_data[i]);
+    free(result_data);
+    for (i = 0; i < result_columns; i++) free(result_col_names[i]);
+    free(result_col_names);
+
+    return result_df;
+}
+
 int main() {
 
     dataFrame *df1 = readCSV("data1.csv");
@@ -570,9 +677,8 @@ int main() {
     printDataFrame(df2);
     printf("\n\n");
 
-    equalizeRows(df1, df2, "a");
-    addColumns(df1, df2->num_columns, df2->data, df2->columns);
-    printDataFrame(df1);
+    dataFrame *df3 = outerJoin(df1, df2);
+    printDataFrame(df3);
     
     return 0;
 }
