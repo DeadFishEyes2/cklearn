@@ -307,7 +307,6 @@ float getColumnStd(dataFrame *df, const char *column_name) {
     for (int i = 0; i < df->num_rows; i++) {
         if (isnan(df->data[i][col_idx])){
             num_nans++;
-            printf("NUM NANS = %d\n", num_nans);
         } else {
             float diff = df->data[i][col_idx] - mean;
             sum_sq_diff += diff * diff;
@@ -507,6 +506,60 @@ dataFrame* selectBottomRows(dataFrame *df, int num_bottom_rows){
     return selected_df;
 }
 
+void addNans(dataFrame* small_df, dataFrame* big_df){
+    int diff = big_df->num_rows - small_df->num_rows;
+
+    //allocating memory for the NaNs
+    float **nan_buffer = (float**)malloc(diff * sizeof(float*));
+    if (nan_buffer == NULL){
+        fprintf(stderr, "Memory error when allocatin NaNs");
+        exit(EXIT_FAILURE);
+    }
+    int num_columns = small_df->num_columns;
+    int i, j;
+    for (i = 0; i < diff; i++){
+        nan_buffer[i] = (float*)malloc(num_columns * sizeof(float));
+        if (nan_buffer[i] == NULL){
+            for (j = 0; j < i; j++){
+                free(nan_buffer[j]);
+            }
+            free(nan_buffer);
+            fprintf(stderr, "Memory error when allocatin NaNs");
+            exit(EXIT_FAILURE);
+        }
+        
+    }
+
+    //adding NaNs to the nan_buffer
+    for (i = 0; i < diff; i++){
+        for (j = 0; j < small_df->num_columns; j++){
+            nan_buffer[i][j] = NAN;
+        }
+    }
+
+    addRows(small_df, diff, nan_buffer);
+}
+
+void equalizeRows(dataFrame *df1, dataFrame *df2, char* method){
+    /*
+        Methods for equalizing rows
+        "add" - 'a'
+        Adds NaNs to the dataFrame with fewer rows to match the dimensions of the bigger one
+        "cut" - 'c'
+        Removes the last rows of the bigger dataFrame to match the dimesions of the smaller one
+    */
+    
+    if (method[0] == 'a'){
+        if (df1->num_rows < df2->num_rows){
+            addNans(df1, df2);
+        } else {
+            addNans(df2, df1);
+        }
+    } else {
+
+    }
+}
+
 int main() {
 
     dataFrame *df1 = readCSV("data1.csv");
@@ -517,9 +570,9 @@ int main() {
     printDataFrame(df2);
     printf("\n\n");
 
-    float mean = getColumnMean(df1, "work hours");
-    printf("%f", mean);
-    printf("\n\n");
+    equalizeRows(df1, df2, "a");
+    addColumns(df1, df2->num_columns, df2->data, df2->columns);
+    printDataFrame(df1);
     
     return 0;
 }
