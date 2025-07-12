@@ -111,10 +111,12 @@ void kmeans(dataFrame *df, int num_clusters, int num_iterations){
 
 int main() {
 
-    dataFrame *df = readCSV("data1.csv");
+    dataFrame *df = readCSV("cluster_data.csv");
     printDataFrame(df);
     printf("\n\n");
 
+    // normalizeColumnMinMax(df, "X");
+    // normalizeColumnMinMax(df, "Y");
     kmeans(df, 3, 10);
     printDataFrame(df);
     
