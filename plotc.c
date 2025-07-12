@@ -9,21 +9,29 @@ void plotScatter(float *x, float *y, int size) {
     }
 
     // Set plot style and formatting
-    fprintf(gp, "set title 'Elegant Scatter Plot'\n");
+    fprintf(gp, "set title 'Scatter Plot with Regression Line'\n");
     fprintf(gp, "set xlabel 'X-axis'\n");
     fprintf(gp, "set ylabel 'Y-axis'\n");
     fprintf(gp, "set grid\n");  // Enable grid
     fprintf(gp, "set key off\n");  // Disable legend if not needed
 
-    // Customize point appearance
-    fprintf(gp, "set style line 1 lc rgb '#0060ad' pt 7 ps 1.5 lw 1\n");  // Blue points
-    fprintf(gp, "plot '-' with points ls 1\n");  // Use the defined style
-
-    // Send data points
+    // Send data to a temporary file for fitting
+    fprintf(gp, "$data << EOD\n");
     for (int i = 0; i < size; i++) {
         fprintf(gp, "%f %f\n", x[i], y[i]);
     }
-    fprintf(gp, "e\n");  // End of data
+    fprintf(gp, "EOD\n");
+
+    // Define a linear model and fit it to the data
+    fprintf(gp, "f(x) = m*x + b\n");
+    fprintf(gp, "fit f(x) '$data' via m, b\n");
+
+    // Customize appearance
+    fprintf(gp, "set style line 1 lc rgb '#0060ad' pt 7 ps 1.5 lw 1\n");  // Scatter points
+    fprintf(gp, "set style line 2 lc rgb '#dd181f' lw 2\n");             // Regression line (red)
+
+    // Plot scatter points and regression line
+    fprintf(gp, "plot '$data' with points ls 1, f(x) with lines ls 2\n");
 
     fflush(gp);
     pclose(gp);
