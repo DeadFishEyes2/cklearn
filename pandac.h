@@ -186,5 +186,8 @@ dataFrame* innerJoin(dataFrame *df1, dataFrame *df2);
  */
 dataFrame* columnJoin(dataFrame *df1, dataFrame *df2, int num_selected_columns,  char **selected_columns);
 
+void replaceColumns(dataFrame *df, int num_replaced, char **old_columns, char **new_columns, float **data);
+
+dataFrame* copyDataFrame (dataFrame* df);
 
 #endif // PANDAC_H

@@ -52,6 +52,10 @@ dataFrame* createDataFrame (int num_columns, int num_rows, float** data, char **
     return df;
 }
 
+dataFrame* copyDataFrame (dataFrame* df){
+    return createDataFrame(df->num_columns, df->num_rows, df->data, df->columns);
+}
+
 void freeDataFrame(dataFrame* df) {
     for (int i = 0; i < df->num_rows; ++i) {
         free(df->data[i]);
@@ -667,4 +671,40 @@ dataFrame* innerJoin(dataFrame *df1, dataFrame *df2) {
     return result_df;
 }
 
+void replaceColumns(dataFrame *df, int num_replaced, char **old_columns, char **new_columns, float **data){
 
+    //in case of a mistype, no changes will be made
+    dataFrame *temp = copyDataFrame(df);
+    
+    int i, j, index;
+    
+    for (i = 0; i < num_replaced; i++){
+        index = getColumnIndex(df, old_columns[i]);
+        
+        //no change in the original df, temp is freed
+        if (index == -1){
+            freeDataFrame(temp);
+            fprintf(stderr, "Could not find column %s in dataFrame\n", old_columns[i]);
+            return;
+        }
+
+        free(temp->columns[index]);
+        temp->columns[index] = strdup(df->columns[index]);
+        for (j = 0; j < df->num_rows; j++){
+            temp->data[j][index] = data[j][i];
+        }
+
+    }
+
+    for (i = 0; i < df->num_columns; i++)
+        free(df->columns[i]);
+    free(df->columns);
+    df->columns = temp->columns;
+    for (i = 0; i < df->num_rows; i++)
+        free(df->data[i]);
+    free(df->data);
+    df->data = temp->data;
+
+    free(temp);
+    
+}
