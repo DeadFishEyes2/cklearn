@@ -706,5 +706,4 @@ void replaceColumns(dataFrame *df, int num_replaced, char **old_columns, char **
     df->data = temp->data;
 
     free(temp);
-    
 }

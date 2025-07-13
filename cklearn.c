@@ -68,38 +68,98 @@ void updateCentroids(dataFrame *df, float **centroids, float *nearest_centroid, 
     free(counts);
 }
 
-void kmeans(dataFrame *df, int num_clusters, int num_iterations){
-    if (num_clusters == 0){
-        printf("Cannot make 0 clusters");
-        return;
+float computeMSE(dataFrame *df, float **centroids, float *nearest_centroid) {
+    double total_error = 0.0;
+
+    for (int i = 0; i < df->num_rows; i++) {
+        int cluster = nearest_centroid[i];
+        double distance = euclideanDistance(df->data[i], centroids[cluster], df->num_columns);
+        total_error += distance * distance;
     }
 
-    srand(time(NULL));
+    return total_error / df->num_rows;
+}
+
+float kmeans(dataFrame *df, int num_clusters, float **final_centroids){
+    if (num_clusters == 0){
+        printf("Cannot make 0 clusters");
+        return INFINITY;
+    }
     
-    //allocating space for the centroids and randomly initializing them
-    float **centroids = (float**)malloc(num_clusters * sizeof(float*));
+    // Initialize the final_centroids with random values
     int i, j;
     float column_min, column_max;
     for (i = 0; i < num_clusters; i++){
-        centroids[i] = (float*)malloc((df->num_columns) * sizeof(float));
         for (j = 0; j < df->num_columns; j++){
             column_min = getColumnMin(df, df->columns[j]);
             column_max = getColumnMax(df, df->columns[j]);
             //the code above forces a search for the column name, not ideal, could be fixed by having a funciton that gets the column by index instead
             //centroids are set to random values determined by the max and min elements from each column
-            centroids[i][j] = column_min + ((float)rand() / RAND_MAX) * (column_max - column_min);
+            final_centroids[i][j] = column_min + ((float)rand() / RAND_MAX) * (column_max - column_min);
         }
     }
 
     //find the centroid positions
     float* nearest_centroid = (float*)malloc(df->num_rows * sizeof(float));
     int iter = 0;
-    while (findNearestCentroid(df, centroids, nearest_centroid, num_clusters) && (iter < num_iterations)){
-        updateCentroids(df, centroids, nearest_centroid, num_clusters);
+    while (findNearestCentroid(df, final_centroids, nearest_centroid, num_clusters)){
+        updateCentroids(df, final_centroids, nearest_centroid, num_clusters);
         iter++;
     }
 
+    // Compute MSE
+    float mse = computeMSE(df, final_centroids, nearest_centroid);
+
+    // Clean up only the locally allocated memory
+    free(nearest_centroid);
+    
+    return mse;
+}
+
+float** kmeansFit(dataFrame *df, int num_clusters, int num_iterations) {
+    float **best_centroids = (float**)malloc(num_clusters * sizeof(float*));
+    for (int i = 0; i < num_clusters; i++) {
+        best_centroids[i] = (float*)malloc(df->num_columns * sizeof(float));
+    }
+
+    float best_mse = INFINITY;
+
+    float **current_centroids = (float**)malloc(num_clusters * sizeof(float*));
+    for (int i = 0; i < num_clusters; i++) {
+        current_centroids[i] = (float*)malloc(df->num_columns * sizeof(float));
+    }
+
+    float mse;
+
+    for (int iter = 0; iter < num_iterations; iter++) {
+        mse = kmeans(df, num_clusters, current_centroids);
+        printf("Iteration %d: MSE = %f\n", iter + 1, mse);
+
+        if (mse < best_mse) {
+            best_mse = mse;
+            // Copy current centroids to best_centroids
+            for (int i = 0; i < num_clusters; i++) {
+                for (int j = 0; j < df->num_columns; j++) {
+                    best_centroids[i][j] = current_centroids[i][j];
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < num_clusters; i++)
+        free(current_centroids[i]);
+    free(current_centroids);
+
+    printf("Best MSE after %d iterations: %f\n", num_iterations, best_mse);
+    return best_centroids;
+}
+
+void kmeansPredict(dataFrame *df, int num_clusters, float **centroids){
+    float *nearest_centroid = (float*)malloc((df->num_rows) * sizeof(float));
+    findNearestCentroid(df, centroids, nearest_centroid, num_clusters);
+    
     //Trasposing a row into a column
+    int i;
     float** centroid_column = (float**)malloc(df->num_rows * sizeof(float*));
     for (i = 0; i < df->num_rows; i++){
         centroid_column[i] = (float*)malloc(sizeof(float));
@@ -107,9 +167,18 @@ void kmeans(dataFrame *df, int num_clusters, int num_iterations){
     }
 
     addColumns(df, 1, centroid_column, (char *[]){"Cluster"});
+    
+    // Free the allocated memory
+    free(nearest_centroid);
+    for (i = 0; i < df->num_rows; i++){
+        free(centroid_column[i]);
+    }
+    free(centroid_column);
 }
 
 int main() {
+
+    srand(time(NULL));
 
     dataFrame *df = readCSV("cluster_data.csv");
     printDataFrame(df);
@@ -117,8 +186,17 @@ int main() {
 
     // normalizeColumnMinMax(df, "X");
     // normalizeColumnMinMax(df, "Y");
-    kmeans(df, 3, 10);
+    float** centroids = kmeansFit(df, 3, 10);
+    kmeansPredict(df, 3, centroids);
     printDataFrame(df);
+    
+    // Free the centroids memory
+    for (int i = 0; i < 3; i++) {
+        free(centroids[i]);
+    }
+    free(centroids);
+    
+    freeDataFrame(df);
     
     return 0;
 }
