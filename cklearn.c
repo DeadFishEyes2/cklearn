@@ -180,7 +180,7 @@ int main() {
 
     srand(time(NULL));
 
-    dataFrame *df = readCSV("cluster_data.csv");
+    dataFrame *df = readCSV("data_2.csv");
     printDataFrame(df);
     printf("\n\n");
 
