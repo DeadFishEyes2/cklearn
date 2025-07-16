@@ -2,11 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <float.h>
 #include "pandac.h"
 
 float euclideanDistance(float *a, float *b, int num_dimensions) {
     double sum = 0.0;
     for (int i = 0; i < num_dimensions; i++) {
+        if (isnan(a[i]) || isnan(b[i]))
+            continue;
         double diff = a[i] - b[i];
         sum += diff * diff;
     }
@@ -176,26 +179,134 @@ void kmeansPredict(dataFrame *df, int num_clusters, float **centroids){
     free(centroid_column);
 }
 
+void insertSortedNeighbor(float *neighbor_indices, float *neighbor_distances, int k, int candidate_index, float candidate_distance) {
+    int i;
+
+    // If the candidate is farther than the farthest neighbor, ignore it
+    if (candidate_distance >= neighbor_distances[k - 1]) {
+        return;
+    }
+
+    // Find position where candidate should be inserted
+    for (i = k - 2; i >= 0 && neighbor_distances[i] > candidate_distance; i--) {
+        // Shift neighbor to the right
+        neighbor_distances[i + 1] = neighbor_distances[i];
+        neighbor_indices[i + 1] = neighbor_indices[i];
+    }
+
+    // Insert the new neighbor (cast index to float)
+    neighbor_distances[i + 1] = candidate_distance;
+    neighbor_indices[i + 1] = (float)candidate_index;
+}
+
+dataFrame *KNN(dataFrame *df, int k, int num_features, char **feature_names) {
+
+    if (k > df->num_rows){
+        printf("More neighbors than rows");
+        return NULL;
+    }
+
+    // Reduce dimensionality to selected features
+    dataFrame *reduced_df = selectColumns(df, num_features, feature_names);
+
+    int num_rows = reduced_df->num_rows;
+
+    // Allocate float arrays for neighbors and distances
+    float **neighbors = (float **)malloc(num_rows * sizeof(float *));
+    float **distances = (float **)malloc(num_rows * sizeof(float *));
+
+    int i, j;
+    for (i = 0; i < num_rows; i++) {
+        neighbors[i] = (float *)malloc(k * sizeof(float));
+        distances[i] = (float *)malloc(k * sizeof(float));
+
+        // Initialize all distances to a large value
+        for (j = 0; j < k; j++) {
+            neighbors[i][j] = -1.0f;          // placeholder for invalid index
+            distances[i][j] = FLT_MAX;        // initialize distances to "infinity"
+        }
+    }
+
+    // Compute pairwise distances
+    for (i = 0; i < num_rows; i++) {
+        for (j = i + 1; j < num_rows; j++) {
+            float d = euclideanDistance(reduced_df->data[i], reduced_df->data[j], num_features);
+
+            // Update neighbor lists for both points
+            insertSortedNeighbor(neighbors[i], distances[i], k, j, d);
+            insertSortedNeighbor(neighbors[j], distances[j], k, i, d);
+        }
+    }
+
+    // Build column names: "neighbor 1", "neighbor 2", ...
+    char **column_names = (char **)malloc(k * sizeof(char *));
+    for (i = 0; i < k; i++) {
+        column_names[i] = (char *)malloc(20 * sizeof(char));
+        snprintf(column_names[i], 20, "neighbor %d", i + 1);
+    }
+
+    // Create dataFrame with neighbors
+    dataFrame *neighbor_df = createDataFrame(k, df->num_rows, neighbors, column_names);
+
+    // Clean up
+    for (i = 0; i < num_rows; i++) {
+        free(distances[i]);
+        free(neighbors[i]); // free because createDataFrame copied data
+    }
+    free(distances);
+    free(neighbors);
+
+    for (i = 0; i < k; i++) {
+        free(column_names[i]);
+    }
+    free(column_names);
+
+    freeDataFrame(reduced_df);
+
+    return neighbor_df;
+}
+
+float nnMean(dataFrame *df, dataFrame *nn_df, int row, int column){
+    
+    float sum = 0;
+
+    int i;
+    for (i = 0; i < nn_df->num_columns; i++){ //interating through every neighbor
+        sum += df->data[(int)nn_df->data[row][i]][column];
+    }
+    return sum/(nn_df->num_columns);
+}
+
+void fillNaN(dataFrame *df, dataFrame *nn_df){
+    int num_rows = df->num_rows;
+    int num_columns = df->num_columns;
+    
+    int i, j;
+    for (i = 0; i < num_rows; i++){
+        for (j = 0; j < num_columns; j++)
+            if (isnan(df->data[i][j])){
+                df->data[i][j] = nnMean(df, nn_df, i, j);
+            }
+    }
+}
+
 int main() {
 
     srand(time(NULL));
 
-    dataFrame *df = readCSV("data_2.csv");
+    dataFrame *df = readCSV("cluster_data.csv");
     printDataFrame(df);
     printf("\n\n");
 
     // normalizeColumnMinMax(df, "X");
     // normalizeColumnMinMax(df, "Y");
-    float** centroids = kmeansFit(df, 3, 10);
-    kmeansPredict(df, 3, centroids);
+    dataFrame* neighbor_df = KNN(df, 5, 2, (char*[]){"X"});
+    printDataFrame(neighbor_df);
+
+    fillNaN(df, neighbor_df);
     printDataFrame(df);
     
-    // Free the centroids memory
-    for (int i = 0; i < 3; i++) {
-        free(centroids[i]);
-    }
-    free(centroids);
-    
+    freeDataFrame(neighbor_df);
     freeDataFrame(df);
     
     return 0;
