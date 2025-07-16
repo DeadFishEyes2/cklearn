@@ -58,6 +58,12 @@ dataFrame* readCSV(const char *filename);
 void printDataFrame(dataFrame *df);
 
 /**
+ * @brief Prints the content of a dataFrame to the console with an index for rows.
+ * @param df The dataFrame to print.
+ */
+void printDataFrameWithIndex(dataFrame *df);
+
+/**
  * @brief Adds new rows to an existing dataFrame.
  * @param df The dataFrame to modify.
  * @param num_new_rows The number of rows to add.

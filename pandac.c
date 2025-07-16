@@ -191,6 +191,27 @@ void printDataFrame(dataFrame *df) {
     }
 }
 
+void printDataFrameWithIndex(dataFrame *df) {
+    int col_width = 12; // Set width for each column
+    int index_width = 5;
+
+    // Print column headers
+    printf("%-*s", index_width, "");
+    for (int i = 0; i < df->num_columns; i++) {
+        printf("%-*s", col_width, df->columns[i]); // Left-align
+    }
+    printf("\n");
+
+    // Print rows
+    for (int i = 0; i < df->num_rows; i++) {
+        printf("%-*d", index_width, i);
+        for (int j = 0; j < df->num_columns; j++) {
+            printf("%-*.2f", col_width, df->data[i][j]); // Left-align numbers (to right-align "%*-.2f")
+        }
+        printf("\n");
+    }
+}
+
 void addRows(dataFrame* df, int num_new_rows, float **data){
     int prev_rows = df->num_rows;
     int i, j;

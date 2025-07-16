@@ -6,14 +6,29 @@
 #include "pandac.h"
 
 float euclideanDistance(float *a, float *b, int num_dimensions) {
-    double sum = 0.0;
+    double sum_sq_diff = 0.0;
+    int valid_dimensions_count = 0;
+
     for (int i = 0; i < num_dimensions; i++) {
-        if (isnan(a[i]) || isnan(b[i]))
-            continue;
-        double diff = a[i] - b[i];
-        sum += diff * diff;
+        // Only include dimensions where both values are valid (not NaN)
+        if (!isnan(a[i]) && !isnan(b[i])) {
+            double diff = a[i] - b[i];
+            sum_sq_diff += diff * diff;
+            valid_dimensions_count++;
+        } else {
+            return FLT_MAX/2;
+        }
     }
-    return sqrt(sum);
+
+    // If no common non-NaN dimensions were found, return a very large distance.
+    // This prevents division by zero and correctly indicates that the points
+    // cannot be meaningfully compared by this metric.
+    if (valid_dimensions_count == 0) {
+        return FLT_MAX; // Use FLT_MAX from float.h
+    }
+
+    // Normalize the sum of squared differences by the number of valid dimensions.
+    return sqrt(sum_sq_diff / valid_dimensions_count);
 }
 
 int findNearestCentroid(dataFrame *df, float **centroids, float *nearest_centroid, int num_clusters) {
@@ -266,15 +281,27 @@ dataFrame *KNN(dataFrame *df, int k, int num_features, char **feature_names) {
     return neighbor_df;
 }
 
-float nnMean(dataFrame *df, dataFrame *nn_df, int row, int column){
-    
-    float sum = 0;
+float nnMean(dataFrame *df, dataFrame *nn_df, int row, int column) {
+    float sum = 0.0f;
+    int count = 0;
 
-    int i;
-    for (i = 0; i < nn_df->num_columns; i++){ //interating through every neighbor
-        sum += df->data[(int)nn_df->data[row][i]][column];
+    // Iterate over neighbors
+    for (int i = 0; i < nn_df->num_columns; i++) {
+        int neighbor_idx = (int)nn_df->data[row][i];
+
+        // Skip invalid neighbors
+        if (neighbor_idx < 0 || neighbor_idx >= df->num_rows) continue;
+        if (neighbor_idx == row) continue; // Skip self
+
+        float val = df->data[neighbor_idx][column];
+        if (!isnan(val)) {
+            sum += val;
+            count++;
+        }
     }
-    return sum/(nn_df->num_columns);
+
+    // If no valid neighbors, return NaN
+    return (count > 0) ? (sum / count) : NAN;
 }
 
 void fillNaN(dataFrame *df, dataFrame *nn_df){
@@ -295,19 +322,22 @@ int main() {
     srand(time(NULL));
 
     dataFrame *df = readCSV("cluster_data.csv");
-    printDataFrame(df);
+    printDataFrameWithIndex(df);
     printf("\n\n");
 
-    // normalizeColumnMinMax(df, "X");
-    // normalizeColumnMinMax(df, "Y");
-    dataFrame* neighbor_df = KNN(df, 5, 2, (char*[]){"X"});
-    printDataFrame(neighbor_df);
+    //normalizeColumnMinMax(df, "X");
+    //normalizeColumnMinMax(df, "Y");
+    dataFrame* neighbor_df = KNN(df, 4, 4, (char*[]){"X", "Y", "Z", "W"});
+    printDataFrameWithIndex(neighbor_df);
+    printf("\n\n");
 
     fillNaN(df, neighbor_df);
-    printDataFrame(df);
+    printDataFrameWithIndex(df);
+    printf("\n\n");
     
     freeDataFrame(neighbor_df);
     freeDataFrame(df);
+    
     
     return 0;
 }
