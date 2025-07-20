@@ -327,7 +327,7 @@ int main() {
 
     //normalizeColumnMinMax(df, "X");
     //normalizeColumnMinMax(df, "Y");
-    dataFrame* neighbor_df = KNN(df, 4, 4, (char*[]){"X", "Y", "Z", "W"});
+    dataFrame* neighbor_df = KNN(df, 2, 3, (char*[]){"A", "B", "C"});
     printDataFrameWithIndex(neighbor_df);
     printf("\n\n");
 
