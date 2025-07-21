@@ -196,4 +196,6 @@ void replaceColumns(dataFrame *df, int num_replaced, char **old_columns, char **
 
 dataFrame* copyDataFrame (dataFrame* df);
 
+int writeCSV(dataFrame *df, const char *filename);
+
 #endif // PANDAC_H

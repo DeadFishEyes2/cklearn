@@ -728,3 +728,40 @@ void replaceColumns(dataFrame *df, int num_replaced, char **old_columns, char **
 
     free(temp);
 }
+
+int writeCSV(dataFrame *df, const char *filename) {
+    
+    // Open the file for writting
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        perror("Error opening file");
+        return -1;
+    }
+
+    // HEADER
+    for (int i = 0; i < df->num_columns; i++) {
+        fprintf(file, "%s", df->columns[i]);
+        if (i < df->num_columns - 1) {
+            fprintf(file, ",");
+        }
+    }
+    fprintf(file, "\n");
+
+    // DATA
+    for (int i = 0; i < df->num_rows; i++) {
+        for (int j = 0; j < df->num_columns; j++) {
+            // Using %g for cleaner output (removes trailing zeros). Use %f if you need fixed decimal places.
+            fprintf(file, "%g", df->data[i][j]);
+            if (j < df->num_columns - 1) {
+                fprintf(file, ",");
+            }
+        }
+        fprintf(file, "\n");
+    }
+
+    fclose(file);
+
+    printf("DataFrame successfully written to %s\n", filename);
+    return 0;
+}
+
