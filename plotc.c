@@ -1,8 +1,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void plotScatter(float *x, float *y, int size) {
-    FILE *gp = popen("gnuplot -persistent", "w");
+void scatterplot(float *x, float *y, int size) {
+    FILE *gp = popen("gnuplot -persistent > /dev/null 2>&1", "w");  // Silence all output
+    if (gp == NULL) {
+        fprintf(stderr, "Could not open gnuplot\n");
+        return;
+    }
+
+    fprintf(gp, "set title 'Simple Scatter Plot'\n");
+    fprintf(gp, "set xlabel 'X-axis'\n");
+    fprintf(gp, "set ylabel 'Y-axis'\n");
+    fprintf(gp, "set grid\n");
+    fprintf(gp, "set key off\n");
+
+    fprintf(gp, "$data << EOD\n");
+    for (int i = 0; i < size; i++) {
+        fprintf(gp, "%f %f\n", x[i], y[i]);
+    }
+    fprintf(gp, "EOD\n");
+
+    fprintf(gp, "plot '$data' with points pt 7 ps 1.5 lc rgb '#0060ad'\n");
+
+    fflush(gp);
+    pclose(gp);
+}
+
+
+void regplot(float *x, float *y, int size) {
+    FILE *gp = popen("gnuplot -persistent > /dev/null 2>&1", "w");
+
     if (gp == NULL) {
         fprintf(stderr, "Could not open gnuplot\n");
         return;
@@ -37,7 +64,7 @@ void plotScatter(float *x, float *y, int size) {
     pclose(gp);
 }
 
-void plotScatterWithHue(float *x, float *y, int *hue, int size) {
+void hueplot(float *x, float *y, int *hue, int size) {
     FILE *gp = popen("gnuplot -persistent", "w");
     if (gp == NULL) {
         fprintf(stderr, "Could not open gnuplot\n");
@@ -99,15 +126,4 @@ void plotScatterWithHue(float *x, float *y, int *hue, int size) {
 
     fflush(gp);
     pclose(gp);
-}
-
-int main() {
-    float x[] = {1.0, 2.0, 3.0, 4.0, 6.0, 1.5, 2.5, 3.5, 5.0};
-    float y[] = {2.1, 4.2, 6.1, 7.9, 10.2, 1.0, 3.5, 5.8, 9.5};
-    int hue[] = {0, 0, 0, 1, 1, 2, 2, 2, 1};  // category for color grouping
-    int size = sizeof(x) / sizeof(x[0]);
-
-    plotScatterWithHue(x, y, hue, size);
-
-    return 0;
 }

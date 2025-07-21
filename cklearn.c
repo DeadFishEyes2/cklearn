@@ -4,6 +4,7 @@
 #include <time.h>
 #include <float.h>
 #include "pandac.h"
+#include "plotc.h"
 
 float euclideanDistance(float *a, float *b, int num_dimensions) {
     double sum_sq_diff = 0.0;
@@ -317,26 +318,124 @@ void fillNaN(dataFrame *df, dataFrame *nn_df){
     }
 }
 
+void dataFrameScatterplot(dataFrame *df, const char *X, const char *Y) {
+
+    int x_col = getColumnIndex(df, X);
+    int y_col = getColumnIndex(df, Y);
+
+    if (x_col == -1 || y_col == -1)
+        return;
+
+    if (x_col >= df->num_columns || y_col >= df->num_columns) {
+        fprintf(stderr, "Invalid column index\n");
+        return;
+    }
+
+    int size = df->num_rows;
+    float *x = malloc(size * sizeof(float));
+    float *y = malloc(size * sizeof(float));
+
+    for (int i = 0; i < size; i++) {
+        x[i] = df->data[i][x_col];
+        y[i] = df->data[i][y_col];
+    }
+
+    // Call existing scatter plot function
+    scatterplot(x, y, size);
+
+    free(x);
+    free(y);
+}
+
+void dataFrameRegplot(dataFrame *df, const char *X, const char *Y) {
+
+    int x_col = getColumnIndex(df, X);
+    int y_col = getColumnIndex(df, Y);
+
+    if (x_col == -1 || y_col == -1)
+        return;
+
+    if (x_col >= df->num_columns || y_col >= df->num_columns) {
+        fprintf(stderr, "Invalid column index\n");
+        return;
+    }
+
+    int size = df->num_rows;
+    float *x = malloc(size * sizeof(float));
+    float *y = malloc(size * sizeof(float));
+
+    for (int i = 0; i < size; i++) {
+        x[i] = df->data[i][x_col];
+        y[i] = df->data[i][y_col];
+    }
+
+    // Call existing scatter plot function
+    regplot(x, y, size);
+
+    free(x);
+    free(y);
+}
+
+void dataFrameHueplot(dataFrame *df, const char* X, const char *Y, const char *HUE) {
+
+    int x_col = getColumnIndex(df, X);
+    int y_col = getColumnIndex(df, Y);
+    int hue_col = getColumnIndex(df, HUE);
+
+    if (x_col >= df->num_columns || y_col >= df->num_columns || hue_col >= df->num_columns) {
+        fprintf(stderr, "Invalid column index\n");
+        return;
+    }
+
+    int size = df->num_rows;
+    float *x = malloc(size * sizeof(float));
+    float *y = malloc(size * sizeof(float));
+    int *hue = malloc(size * sizeof(int));
+
+    for (int i = 0; i < size; i++) {
+        x[i] = df->data[i][x_col];
+        y[i] = df->data[i][y_col];
+        hue[i] = (int)df->data[i][hue_col];  // Assuming hue is stored as int
+    }
+
+    // Call existing scatter plot with hue function
+    hueplot(x, y, hue, size);
+
+    free(x);
+    free(y);
+    free(hue);
+}
+
 int main() {
 
     srand(time(NULL));
 
-    dataFrame *df = readCSV("cluster_data.csv");
-    printDataFrameWithIndex(df);
+    dataFrame *df_1 = readCSV("clear_clusters.csv");
+    printDataFrameWithIndex(df_1);
+    printf("\n\n");
+
+    dataFrame *df_2 = readCSV("fuzzy_clusters.csv");
+    printDataFrameWithIndex(df_2);
     printf("\n\n");
 
     //normalizeColumnMinMax(df, "X");
     //normalizeColumnMinMax(df, "Y");
-    dataFrame* neighbor_df = KNN(df, 2, 3, (char*[]){"A", "B", "C"});
-    printDataFrameWithIndex(neighbor_df);
-    printf("\n\n");
 
-    fillNaN(df, neighbor_df);
-    printDataFrameWithIndex(df);
-    printf("\n\n");
+
+    int num_cluster = 3;
+
+    float **centroids = kmeansFit(df_1, num_cluster, 10);
+    kmeansPredict(df_1, num_cluster, centroids);
+    printDataFrame(df_1);
+    dataFrameHueplot(df_1, "x", "y", "Cluster");
     
-    freeDataFrame(neighbor_df);
-    freeDataFrame(df);
+
+    centroids = kmeansFit(df_2, num_cluster, 10);
+    kmeansPredict(df_2, num_cluster, centroids);
+    dataFrameHueplot(df_2, "x", "y", "Cluster");
+    
+    freeDataFrame(df_1);
+    freeDataFrame(df_2);
     
     
     return 0;

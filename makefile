@@ -9,7 +9,7 @@ LDFLAGS = -lm
 TARGET = program
 
 # Source files
-SRCS = cklearn.c pandac.c
+SRCS = cklearn.c pandac.c plotc.c
 
 OBJS = $(SRCS:.c=.o)
 
@@ -18,7 +18,7 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LDFLAGS)
 
-%.o: %.c pandac.h
+%.o: %.c pandac.h plotc.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
