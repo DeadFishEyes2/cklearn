@@ -436,6 +436,9 @@ int main() {
     
     freeDataFrame(df_1);
     freeDataFrame(df_2);
+
+    dataFrame *df = readCSV("data1.csv");
+    dataFrameRegplot(df, "x", "y");
     
     
     return 0;

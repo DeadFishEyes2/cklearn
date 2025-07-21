@@ -24,6 +24,8 @@ cklearn: Machine Learning in C
 `cklearn` currently offers collection of functionalities, focusing on foundational machine learning tasks and data preprocessing. Each component is designed for efficiency and ease of integration into C projects.
 
 *   **Clustering:**
+
+![Image of clusters](./docs/kmeans.png)
     
     *   **K-Means Clustering:** This unsupervised learning algorithm is a cornerstone of data analysis, used for partitioning `n` observations into `k` clusters where each observation belongs to the cluster with the nearest mean (centroid). `cklearn` provides a robust implementation with functions for:
         
@@ -62,6 +64,8 @@ Inspired by the powerful `pandas` library in Python, `pandac` provides a robust 
     *   **Creation and freeing of DataFrames (`createDataFrame`, `freeDataFrame`):** These core functions manage the memory allocation and deallocation for `dataFrame` structures, ensuring efficient resource management. `createDataFrame` allows for programmatic construction of DataFrames from existing C arrays.
         
     *   **Printing DataFrames (`printDataFrame`, `printDataFrameWithIndex`):** Essential for inspecting data, these functions provide formatted output of the `dataFrame` content to the console, with `printDataFrameWithIndex` adding row indices for easier reference.
+
+    ![Image of printDataFrameWithIndex](./docs/printwithindex.png)
         
     *   **Adding rows and columns (`addRows`, `addColumns`):** These functions allow for the dynamic expansion of a `dataFrame` by appending new rows or columns of data, facilitating iterative data construction or feature engineering.
         
@@ -89,10 +93,14 @@ Similar in spirit to `matplotlib` but tailored for C, `plotc` provides essential
 *   **Simple scatter plots (`scatterplot`):** Generates a basic 2D scatter plot, ideal for visualizing the relationship between two numerical variables. It provides a quick visual check of data distribution.
     
 *   **Scatter plots with linear regression lines (`regplot`):** Extends the scatter plot by adding a calculated linear regression line, helping to identify and visualize linear trends within the data. This is useful for understanding correlations and potential predictive relationships.
+
+![Image of scatter plot with hue](./docs/regplot.png)
     
 *   **Scatter plots with different hues/categories (`hueplot`):** Enables the visualization of data points colored by a categorical variable (hue). This is particularly effective for observing clusters or group separations, such as the output of K-Means clustering, where different colors represent different clusters.
+
+![Image of scatter plot with hue](./docs/kmeans.png)
     
-*   **DataFrame-integrated plotting functions (`dataFrameScatterplot`, `dataFrameRegplot`, `dataFrameHueplot`):** These convenience functions directly accept `dataFrame` objects and column names, simplifying the plotting process by abstracting away the need to manually extract data arrays. They seamlessly integrate `pandac`'s data structures with `plotc`'s visualization capabilities.
+*   **DataFrame-integrated plotting functions (`dataFrameScatterplot`, `dataFrameRegplot`, `dataFrameHueplot`):** These convenience functions directly accept `dataFrame` objects and column names, simplifying the plotting process by abstracting away the need to manually extract data arrays. They integrate `pandac`'s data structures with `plotc`'s visualization capabilities.
     
 
 # Getting Started
@@ -115,29 +123,37 @@ Before you can build and run `cklearn`, ensure you have the following software i
 
 1.  **Clone the repository (or ensure all `.c` and `.h` files are in the same directory):** If your project is hosted on a Git repository, use the following command to clone it to your local machine. Otherwise, ensure all source (`.c`) and header (`.h`) files are present in your working directory.
     
-        git clone https://github.com/your-repo/cklearn.git # Replace with your actual repository URL
+        git clone [https://github.com/your-repo/cklearn.git](https://github.com/DeadFishEyes2/cklearn.git)
         cd cklearn
         
     
 2.  **Compile the source files:** The project includes a `Makefile` that automates the compilation process. This `Makefile` defines the compiler (`CC`), compilation flags (`CFLAGS`), source files (`SRCS`), object files (`OBJS`), and the final executable target (`TARGET`). The flags `-Wall -Wextra` enable extensive warnings, `-std=c99` ensures C99 standard compliance, `-g` includes debugging information, and `-lm` links the math library.
     
+        # Compiler and compiler flags
         CC = gcc
-        CFLAGS = -Wall -Wextra -std=c99 -g -lm
-        
+        # CFLAGS: C compiler flags. -Wall enables all warnings, -g adds debugging info.
+        CFLAGS = -Wall -g
+        # LDFLAGS: Linker flags. -lm links the math library.
+        LDFLAGS = -lm
+
+        # The name of the final executable
+        TARGET = program
+
+        # Source files
         SRCS = cklearn.c pandac.c plotc.c
+
         OBJS = $(SRCS:.c=.o)
-        TARGET = cklearn_app
-        
+
         all: $(TARGET)
-        
+
         $(TARGET): $(OBJS)
-        	$(CC) $(OBJS) -o $(TARGET) $(CFLAGS)
-        
-        %.o: %.c
-        	$(CC) -c $< -o $@ $(CFLAGS)
-        
+          $(CC) $(CFLAGS) -o $(TARGET) $(OBJS) $(LDFLAGS)
+
+        %.o: %.c pandac.h plotc.h
+          $(CC) $(CFLAGS) -c $< -o $@
+
         clean:
-        	rm -f $(OBJS) $(TARGET)
+          rm -f $(OBJS) $(TARGET)
         
     
     To compile the project, navigate to the project directory in your terminal and simply run:
@@ -145,7 +161,7 @@ Before you can build and run `cklearn`, ensure you have the following software i
         make
         
     
-    Upon successful compilation, this command will create an executable file named `cklearn_app` (or whatever name you've specified for `TARGET` in your `Makefile`) in the current directory. The `clean` target can be used to remove compiled object files and the executable.
+    Upon successful compilation, this command will create an executable file named `program` (or whatever name you've specified for `TARGET` in your `Makefile`) in the current directory. The `clean` target can be used to remove compiled object files and the executable.
     
 
 # Usage
