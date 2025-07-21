@@ -1,7 +1,7 @@
 cklearn: Machine Learning in C
 ==============================
 
-`cklearn` is a machine learning library written entirely in C, meticulously crafted to offer a lightweight, high-performance, and efficient suite of tools for fundamental data manipulation, in-depth analysis, and common machine learning algorithms. Drawing significant inspiration from the widely adopted Python libraries `scikit-learn` and `pandas`, `cklearn` aims to bridge the gap for developers and researchers who require the raw speed and low-level control that C programming provides. This makes it particularly well-suited for embedded systems, high-performance computing, or environments where Python dependencies are not feasible or desirable. Our goal is to empower C programmers with robust and accessible machine learning capabilities directly within their native development environment.
+`cklearn` is a machine learning library written in pure `C`. It’s designed to be lightweight and fast, with tools for data manipulation, analysis, and common ML algorithms. Inspired by scikit-learn and pandas, it gives C programmers the ability to do ML without relying on Python, making it great for `embedded systems` or cases where you need raw speed and low-level control.
 
 ## 📖 Table of Contents
 
@@ -16,13 +16,12 @@ cklearn: Machine Learning in C
   - [Plotting (plotc)](#plotting-plotc)
 - [Examples](#examples)
 - [Contributing](#contributing)
-- [License](#license)
     
 
-#Features
+# Features
 --------
 
-`cklearn` currently offers a growing collection of functionalities, focusing on foundational machine learning tasks and data preprocessing. Each component is designed for efficiency and ease of integration into C projects.
+`cklearn` currently offers collection of functionalities, focusing on foundational machine learning tasks and data preprocessing. Each component is designed for efficiency and ease of integration into C projects.
 
 *   **Clustering:**
     
@@ -47,7 +46,7 @@ cklearn: Machine Learning in C
     *   **Euclidean Distance calculation:** The Euclidean distance is a fundamental metric used extensively throughout `cklearn`, particularly in clustering and nearest neighbor algorithms. It quantifies the straight-line distance between two points in Euclidean space. This core function is optimized for performance and forms the basis for many other algorithms within the library. Future versions may include other distance metrics like Manhattan or Cosine similarity to cater to different data types and analytical needs.
         
 
-#Auxiliary Libraries
+# Auxiliary Libraries
 -------------------
 
 `cklearn` is built upon and complements two dedicated auxiliary libraries, `pandac` for efficient data handling and `plotc` for basic data visualization. These libraries are integral to providing a comprehensive data science toolkit in C.
@@ -96,7 +95,7 @@ Similar in spirit to `matplotlib` but tailored for C, `plotc` provides essential
 *   **DataFrame-integrated plotting functions (`dataFrameScatterplot`, `dataFrameRegplot`, `dataFrameHueplot`):** These convenience functions directly accept `dataFrame` objects and column names, simplifying the plotting process by abstracting away the need to manually extract data arrays. They seamlessly integrate `pandac`'s data structures with `plotc`'s visualization capabilities.
     
 
-#Getting Started
+# Getting Started
 ---------------
 
 To begin working with `cklearn`, follow these steps to set up your development environment and build the project.
@@ -149,7 +148,7 @@ Before you can build and run `cklearn`, ensure you have the following software i
     Upon successful compilation, this command will create an executable file named `cklearn_app` (or whatever name you've specified for `TARGET` in your `Makefile`) in the current directory. The `clean` target can be used to remove compiled object files and the executable.
     
 
-#Usage
+# Usage
 -----
 
 This section provides practical examples demonstrating how to integrate and utilize the `pandac`, `cklearn`, and `plotc` libraries within your C applications.
@@ -303,7 +302,7 @@ The `plotc` library provides convenient functions to visualize your data directl
     }
     
 
-#Examples
+# Examples
 --------
 
 The `main` function within `cklearn.c` serves as a comprehensive demonstration of how to integrate and utilize the K-Means clustering algorithm with data loading, manipulation, and visualization capabilities provided by `pandac` and `plotc`. It showcases a typical workflow for clustering analysis.
@@ -401,12 +400,9 @@ The `main` function within `cklearn.c` serves as a comprehensive demonstration o
     }
     
 
-#Contributing
+# Contributing
 ------------
 
 We welcome contributions from the community to enhance `cklearn`! Whether you're interested in implementing new machine learning algorithms, improving the efficiency or robustness of existing functionalities, fixing bugs, or expanding the documentation, your efforts are highly appreciated. Please feel free to open issues to report bugs or suggest new features, and submit pull requests with your proposed changes. We encourage adherence to standard C coding practices and clear, concise commenting within the code.
 
-#License
--------
-
-This project is open-source and available under the [MIT License]. This permissive license allows for broad use, modification, and distribution of the software, making it accessible for both academic and commercial applications. Please refer to the `LICENSE` file in the project root for the full licensing terms.
+One exceptional addition to cklearn would be multithreadding since finding neighbors and calculating means could benefit from a paralel processing aproach.
