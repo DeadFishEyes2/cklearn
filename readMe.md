@@ -27,7 +27,7 @@ cklearn: Machine Learning in C
 
 ![Image of clusters](./docs/kmeans.png)
     
-    *   **K-Means Clustering:** This unsupervised learning algorithm is a cornerstone of data analysis, used for partitioning `n` observations into `k` clusters where each observation belongs to the cluster with the nearest mean (centroid). `cklearn` provides a robust implementation with functions for:
+        *   **K-Means Clustering:** This unsupervised learning algorithm is a cornerstone of data analysis, used for partitioning `n` observations into `k` clusters where each observation belongs to the cluster with the nearest mean (centroid). `cklearn` provides a robust implementation   with functions for:
         
         *   `kmeans`: Performs a single run of the K-Means algorithm, iteratively refining cluster assignments and centroid positions until convergence.
             
