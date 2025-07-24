@@ -765,3 +765,28 @@ int writeCSV(dataFrame *df, const char *filename) {
     return 0;
 }
 
+dataFrame *selectByIndex(dataFrame *df, int num_indexes, int* indexes){
+
+    dataFrame *selected_dataframe = (dataFrame*)malloc(sizeof(dataFrame));
+
+    // Allocate the data
+    selected_dataframe->data = (float**)malloc(df->num_rows * sizeof(float*));
+    if (selected_dataframe->data == NULL) {
+        fprintf(stderr, "Memory allocation failed for data\n");
+        free(selected_dataframe);
+        return NULL;
+    }
+
+    for (int i = 0; i < num_indexes; ++i) {
+        selected_dataframe->data[i] = (float*)malloc(df->num_columns * sizeof(float));
+        for (int j = 0; j < df->num_columns; ++j) {
+            selected_dataframe->data[i][j] = df->data[indexes[i]][j]; // copy each element
+        }
+    }
+
+    selected_dataframe->num_columns = df->num_columns;
+    selected_dataframe->num_rows = num_indexes;
+    selected_dataframe->columns = df->columns;
+
+    return selected_dataframe;
+}

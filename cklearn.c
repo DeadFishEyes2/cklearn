@@ -406,6 +406,14 @@ void dataFrameHueplot(dataFrame *df, const char* X, const char *Y, const char *H
     free(hue);
 }
 
+void LocalOutlierFactor(dataFrame *df, int num_neighbors){
+    dataFrame *neighbors = KNN(df, num_neighbors, df->num_columns, df->columns);
+    
+
+    
+    free(neighbors);
+}
+
 int main() {
 
     srand(time(NULL));
@@ -414,7 +422,7 @@ int main() {
     printDataFrameWithIndex(df_1);
     printf("\n\n");
 
-    dataFrame *df_2 = readCSV("fuzzy_clusters.csv");
+    dataFrame *df_2 = selectByIndex(df_1, 3, (int[]){0, 1, 2});
     printDataFrameWithIndex(df_2);
     printf("\n\n");
 
@@ -422,23 +430,6 @@ int main() {
     //normalizeColumnMinMax(df, "Y");
 
 
-    int num_cluster = 3;
-
-    float **centroids = kmeansFit(df_1, num_cluster, 10);
-    kmeansPredict(df_1, num_cluster, centroids);
-    printDataFrame(df_1);
-    dataFrameHueplot(df_1, "x", "y", "Cluster");
-    
-
-    centroids = kmeansFit(df_2, num_cluster, 10);
-    kmeansPredict(df_2, num_cluster, centroids);
-    dataFrameHueplot(df_2, "x", "y", "Cluster");
-    
-    freeDataFrame(df_1);
-    freeDataFrame(df_2);
-
-    dataFrame *df = readCSV("data1.csv");
-    dataFrameRegplot(df, "x", "y");
     
     
     return 0;

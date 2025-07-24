@@ -198,4 +198,6 @@ dataFrame* copyDataFrame (dataFrame* df);
 
 int writeCSV(dataFrame *df, const char *filename);
 
+dataFrame *selectByIndex(dataFrame *df, int num_indexes, int *indexes);
+
 #endif // PANDAC_H
