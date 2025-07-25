@@ -406,31 +406,122 @@ void dataFrameHueplot(dataFrame *df, const char* X, const char *Y, const char *H
     free(hue);
 }
 
-void LocalOutlierFactor(dataFrame *df, int num_neighbors){
-    dataFrame *neighbors = KNN(df, num_neighbors, df->num_columns, df->columns);
-    
+// Helper struct to hold distance and index together for sorting.
+typedef struct {
+    double distance;
+    int index;
+} DistanceInfo;
 
-    
-    free(neighbors);
+// qsort comparison function for DistanceInfo structs.
+int compareDistanceInfo(const void *a, const void *b) {
+    DistanceInfo *da = (DistanceInfo*)a;
+    DistanceInfo *db = (DistanceInfo*)b;
+    if (da->distance < db->distance) return -1;
+    if (da->distance > db->distance) return 1;
+    return 0;
+}
+
+void LocalOutlierFactor(dataFrame *df, int k) {
+    int n = df->num_rows;
+    if (k >= n) {
+        fprintf(stderr, "k must be smaller than the number of rows for LOF.\n");
+        return;
+    }
+
+    // --- Step 1: Pre-computation of k-distances and neighbor sets for all points ---
+    double *k_distances = malloc(n * sizeof(double));
+    int **neighbors_indices = malloc(n * sizeof(int*));
+
+    for (int i = 0; i < n; i++) {
+        neighbors_indices[i] = malloc(k * sizeof(int));
+
+        // Create an array of distances from point 'i' to all other points.
+        // We use (n-1) because we exclude the point itself.
+        DistanceInfo *distances = malloc((n - 1) * sizeof(DistanceInfo));
+        int d_idx = 0;
+        for (int j = 0; j < n; j++) {
+            if (i == j) continue;
+            distances[d_idx].distance = euclideanDistance(df->data[i], df->data[j], df->num_columns);
+            distances[d_idx].index = j;
+            d_idx++;
+        }
+
+        // Sort the distances to find the nearest neighbors.
+        qsort(distances, n - 1, sizeof(DistanceInfo), compareDistanceInfo);
+
+        // The k-distance is the distance to the k-th neighbor (at index k-1).
+        k_distances[i] = distances[k - 1].distance;
+
+        // Store the indices of the k-nearest neighbors.
+        for (int j = 0; j < k; j++) {
+            neighbors_indices[i][j] = distances[j].index;
+        }
+
+        free(distances);
+    }
+
+    // --- Step 2: Compute Local Reachability Density (LRD) for each point ---
+    double *lrd = calloc(n, sizeof(double));
+    for (int i = 0; i < n; i++) {
+        double reach_dist_sum = 0.0;
+        // For each neighbor of point 'i'...
+        for (int j = 0; j < k; j++) {
+            int neighbor_idx = neighbors_indices[i][j];
+            
+            // Get the actual distance from 'i' to its neighbor.
+            double dist_to_neighbor = euclideanDistance(df->data[i], df->data[neighbor_idx], df->num_columns);
+            
+            // Reachability distance is the max of (actual distance) and (k-distance of the neighbor).
+            double reach_dist = fmax(dist_to_neighbor, k_distances[neighbor_idx]);
+            reach_dist_sum += reach_dist;
+        }
+        // LRD is the inverse of the average reachability distance.
+        lrd[i] = (reach_dist_sum > 0) ? (k / reach_dist_sum) : 0.0;
+    }
+
+    // --- Step 3: Compute final LOF score for each point ---
+    float **lof_col_data = malloc(n * sizeof(float*));
+    for (int i = 0; i < n; i++) {
+        lof_col_data[i] = malloc(sizeof(float));
+        double lrd_ratio_sum = 0.0;
+        // For each neighbor of point 'i'...
+        for (int j = 0; j < k; j++) {
+            int neighbor_idx = neighbors_indices[i][j];
+            // Sum the ratios of the neighbor's LRD to point 'i's LRD.
+            // Add a small epsilon to avoid division by zero for very dense points.
+            if (lrd[i] > 1e-9) { 
+                lrd_ratio_sum += lrd[neighbor_idx] / lrd[i];
+            }
+        }
+        // The LOF is the average of these ratios.
+        lof_col_data[i][0] = (float)(lrd_ratio_sum / k);
+    }
+
+    // --- Step 4: Add the LOF scores as a new column to the dataframe ---
+    addColumns(df, 1, lof_col_data, (char*[]){"LOF"});
+
+    // --- Step 5: Cleanup ---
+    for (int i = 0; i < n; i++) {
+        free(neighbors_indices[i]);
+        free(lof_col_data[i]);
+    }
+    free(neighbors_indices);
+    free(lof_col_data);
+    free(k_distances);
+    free(lrd);
 }
 
 int main() {
 
     srand(time(NULL));
 
-    dataFrame *df_1 = readCSV("clear_clusters.csv");
+    dataFrame *df_1 = readCSV("data.csv");
     printDataFrameWithIndex(df_1);
     printf("\n\n");
 
-    dataFrame *df_2 = selectByIndex(df_1, 3, (int[]){0, 1, 2});
-    printDataFrameWithIndex(df_2);
-    printf("\n\n");
+    LocalOutlierFactor(df_1, 4);
 
-    //normalizeColumnMinMax(df, "X");
-    //normalizeColumnMinMax(df, "Y");
+    printDataFrame(df_1);
 
-
-    
-    
     return 0;
 }
