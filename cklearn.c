@@ -6,6 +6,17 @@
 #include "pandac.h"
 #include "plotc.h"
 
+typedef struct {
+    double distance;
+    int index;
+} DistanceInfo;
+
+typedef struct {
+    float *weights;
+    int num_weights;
+    float bias;
+} LiniarRegression;
+
 float euclideanDistance(float *a, float *b, int num_dimensions) {
     double sum_sq_diff = 0.0;
     int valid_dimensions_count = 0;
@@ -406,13 +417,6 @@ void dataFrameHueplot(dataFrame *df, const char* X, const char *Y, const char *H
     free(hue);
 }
 
-// Helper struct to hold distance and index together for sorting.
-typedef struct {
-    double distance;
-    int index;
-} DistanceInfo;
-
-// qsort comparison function for DistanceInfo structs.
 int compareDistanceInfo(const void *a, const void *b) {
     DistanceInfo *da = (DistanceInfo*)a;
     DistanceInfo *db = (DistanceInfo*)b;
@@ -421,14 +425,13 @@ int compareDistanceInfo(const void *a, const void *b) {
     return 0;
 }
 
-void LocalOutlierFactor(dataFrame *df, int k) {
+void LocalOutlierFactor(dataFrame *df, int k){
     int n = df->num_rows;
     if (k >= n) {
         fprintf(stderr, "k must be smaller than the number of rows for LOF.\n");
         return;
     }
 
-    // --- Step 1: Pre-computation of k-distances and neighbor sets for all points ---
     double *k_distances = malloc(n * sizeof(double));
     int **neighbors_indices = malloc(n * sizeof(int*));
 
@@ -460,7 +463,6 @@ void LocalOutlierFactor(dataFrame *df, int k) {
         free(distances);
     }
 
-    // --- Step 2: Compute Local Reachability Density (LRD) for each point ---
     double *lrd = calloc(n, sizeof(double));
     for (int i = 0; i < n; i++) {
         double reach_dist_sum = 0.0;
@@ -479,7 +481,6 @@ void LocalOutlierFactor(dataFrame *df, int k) {
         lrd[i] = (reach_dist_sum > 0) ? (k / reach_dist_sum) : 0.0;
     }
 
-    // --- Step 3: Compute final LOF score for each point ---
     float **lof_col_data = malloc(n * sizeof(float*));
     for (int i = 0; i < n; i++) {
         lof_col_data[i] = malloc(sizeof(float));
@@ -497,10 +498,8 @@ void LocalOutlierFactor(dataFrame *df, int k) {
         lof_col_data[i][0] = (float)(lrd_ratio_sum / k);
     }
 
-    // --- Step 4: Add the LOF scores as a new column to the dataframe ---
     addColumns(df, 1, lof_col_data, (char*[]){"LOF"});
 
-    // --- Step 5: Cleanup ---
     for (int i = 0; i < n; i++) {
         free(neighbors_indices[i]);
         free(lof_col_data[i]);
@@ -511,17 +510,124 @@ void LocalOutlierFactor(dataFrame *df, int k) {
     free(lrd);
 }
 
+float randf(void){
+    return (float)rand()/RAND_MAX;
+}
+
+float liniarMSE(dataFrame *train, LiniarRegression *model){
+    float d, y, result;
+    result = 0;
+
+    int i, j;
+    for (i = 0; i < train->num_rows; i++){
+        y = 0;
+        for (j = 0; j < train->num_columns-1; j++){
+            y += train->data[i][j]*(model->weights[j]);
+        }
+        y += model->bias;
+        d = y - train->data[i][train->num_columns-1];
+        result += d*d;
+    }
+    
+    return result;
+}
+
+void initializeModel(LiniarRegression *model, int num_weights){
+    
+    model->weights = (float*)malloc(num_weights*sizeof(float));
+
+    model->num_weights = num_weights;
+    
+    int i;
+    for (i = 0; i < num_weights; i++){
+        model->weights[i] = randf()*10.0f;
+    }
+    model->bias = randf()*10.0f;
+}
+
+void freeLiniarModel(LiniarRegression *model){
+    free(model->weights);
+    free(model);
+}
+
+LiniarRegression *liniarRegressionFit(dataFrame *train, float epsilon, float learning_rate){
+    
+    LiniarRegression *model = (LiniarRegression*)malloc(sizeof(LiniarRegression));
+    initializeModel(model, train->num_columns-1);
+
+    int i;
+    float *dcost = (float*)malloc(train->num_columns*sizeof(float));
+
+    float c;
+    int num_iterations;
+    for (num_iterations = 0; num_iterations < 100000; num_iterations++){
+        c = liniarMSE(train, model);
+        for (i = 0; i < train->num_columns-1; i++){
+            model->weights[i] += epsilon;
+            dcost[i] = (liniarMSE(train, model) - c)/epsilon;
+            model->weights[i] -= epsilon;
+        }
+        model->bias += epsilon;
+        dcost[train->num_columns-1] = (liniarMSE(train, model) - c)/epsilon;
+        model->bias -= epsilon;
+        
+        for (i = 0; i < train->num_columns-1; i++){
+            model->weights[i] -= learning_rate*dcost[i];
+        }
+        model->bias -= learning_rate*dcost[train->num_columns-1];
+    }
+
+    free(dcost);
+
+    return model;
+}
+
+void liniarRegressionPredict(dataFrame *test, LiniarRegression *model){
+    
+    float *y = (float*)malloc(test->num_rows*sizeof(float));
+
+    int i, j;
+    for (i = 0; i < test->num_rows; i++){
+        y[i] = 0;
+        for (j = 0; j < model->num_weights; j++){
+            y[i] += test->data[i][j] * model->weights[j];
+        }
+        y[i] += model->bias;
+    }
+
+    //Trasposing a row into a column
+    float** y_column = (float**)malloc(test->num_rows * sizeof(float*));
+    for (i = 0; i < test->num_rows; i++){
+        y_column[i] = (float*)malloc(sizeof(float));
+        y_column[i][0] = y[i]; 
+    }
+
+    addColumns(test, 1, y_column, (char *[]){"prediction"});
+    
+    // Free the allocated memory
+    free(y);
+    for (i = 0; i < test->num_rows; i++){
+        free(y_column[i]);
+    }
+    free(y_column);
+
+}
+
 int main() {
 
     srand(time(NULL));
 
-    dataFrame *df_1 = readCSV("data.csv");
-    printDataFrameWithIndex(df_1);
-    printf("\n\n");
+    dataFrame *train = readCSV("train.csv");
+    dataFrame *test = readCSV("test.csv");
 
-    LocalOutlierFactor(df_1, 4);
+    LiniarRegression *model = liniarRegressionFit(train, 1e-3, 1e-4);
+    liniarRegressionPredict(test, model);
 
-    printDataFrame(df_1);
+    printDataFrame(test);
+
+    freeLiniarModel(model);
+    freeDataFrame(train);
+    freeDataFrame(test);
 
     return 0;
 }
