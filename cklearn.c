@@ -15,7 +15,7 @@ typedef struct {
     float *weights;
     int num_weights;
     float bias;
-} LiniarRegression;
+} LinearRegression;
 
 float euclideanDistance(float *a, float *b, int num_dimensions) {
     double sum_sq_diff = 0.0;
@@ -514,7 +514,7 @@ float randf(void){
     return (float)rand()/RAND_MAX;
 }
 
-float liniarMSE(dataFrame *train, LiniarRegression *model){
+float linearMSE(dataFrame *train, LinearRegression *model){
     float d, y, result;
     result = 0;
 
@@ -532,7 +532,7 @@ float liniarMSE(dataFrame *train, LiniarRegression *model){
     return result;
 }
 
-void initializeModel(LiniarRegression *model, int num_weights){
+void initializeModel(LinearRegression *model, int num_weights){
     
     model->weights = (float*)malloc(num_weights*sizeof(float));
 
@@ -545,14 +545,14 @@ void initializeModel(LiniarRegression *model, int num_weights){
     model->bias = randf()*10.0f;
 }
 
-void freeLiniarModel(LiniarRegression *model){
+void freeLinearModel(LinearRegression *model){
     free(model->weights);
     free(model);
 }
 
-LiniarRegression *liniarRegressionFit(dataFrame *train, float epsilon, float learning_rate){
+LinearRegression *linearRegressionFit(dataFrame *train, float epsilon, float learning_rate){
     
-    LiniarRegression *model = (LiniarRegression*)malloc(sizeof(LiniarRegression));
+    LinearRegression *model = (LinearRegression*)malloc(sizeof(LinearRegression));
     initializeModel(model, train->num_columns-1);
 
     int i;
@@ -561,14 +561,14 @@ LiniarRegression *liniarRegressionFit(dataFrame *train, float epsilon, float lea
     float c;
     int num_iterations;
     for (num_iterations = 0; num_iterations < 100000; num_iterations++){
-        c = liniarMSE(train, model);
+        c = linearMSE(train, model);
         for (i = 0; i < train->num_columns-1; i++){
             model->weights[i] += epsilon;
-            dcost[i] = (liniarMSE(train, model) - c)/epsilon;
+            dcost[i] = (linearMSE(train, model) - c)/epsilon;
             model->weights[i] -= epsilon;
         }
         model->bias += epsilon;
-        dcost[train->num_columns-1] = (liniarMSE(train, model) - c)/epsilon;
+        dcost[train->num_columns-1] = (linearMSE(train, model) - c)/epsilon;
         model->bias -= epsilon;
         
         for (i = 0; i < train->num_columns-1; i++){
@@ -582,7 +582,7 @@ LiniarRegression *liniarRegressionFit(dataFrame *train, float epsilon, float lea
     return model;
 }
 
-void liniarRegressionPredict(dataFrame *test, LiniarRegression *model){
+void linearRegressionPredict(dataFrame *test, LinearRegression *model){
     
     float *y = (float*)malloc(test->num_rows*sizeof(float));
 
@@ -615,17 +615,17 @@ void liniarRegressionPredict(dataFrame *test, LiniarRegression *model){
 
 int main() {
 
-    srand(time(NULL));
+    srand(time(0));
 
-    dataFrame *train = readCSV("train.csv");
-    dataFrame *test = readCSV("test.csv");
+    dataFrame *train = readCSV("data_examples/train.csv");
+    dataFrame *test = readCSV("data_examples/test.csv");
 
-    LiniarRegression *model = liniarRegressionFit(train, 1e-3, 1e-4);
-    liniarRegressionPredict(test, model);
+    LinearRegression *model = linearRegressionFit(train, 1e-3, 1e-4);
+    linearRegressionPredict(test, model);
 
     printDataFrame(test);
 
-    freeLiniarModel(model);
+    freeLinearModel(model);
     freeDataFrame(train);
     freeDataFrame(test);
 
